@@ -9,6 +9,7 @@ import { FaEnvelope, FaLock, FaExclamationTriangle } from 'react-icons/fa';
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [debugInfo, setDebugInfo] = useState('');
   
   const { login, loading, error } = useContext(AuthContext);
   const { success } = useAlerts();
@@ -17,25 +18,33 @@ const Login = () => {
   const submitHandler = async (e) => {
     e.preventDefault();
     
+    if (!email || !password) {
+      setDebugInfo('Email and password are required');
+      return;
+    }
+    
     try {
-      console.log("Attempting login with:", { email, password });
+      setDebugInfo('Attempting login...');
+      console.log("Attempting login with:", { email, password: '********' });
       const result = await login(email, password);
       console.log("Login successful:", result);
+      setDebugInfo(`Login successful: Redirecting...`);
       
       // Show success alert
       success('Login successful! Welcome back.');
       
       // Redirect based on user role
-      if (result.role === 'doctor') {
+      if (result.isDoctor) {
         navigate('/doctor-dashboard');
-      } else if (result.role === 'patient') {
-        navigate('/patient-dashboard');
+      } else if (result.isAdmin) {
+        navigate('/admin-dashboard');
       } else {
-        navigate('/');
+        navigate('/patient-dashboard');
       }
     } catch (err) {
       console.error("Login error in component:", err);
-      // Error is handled in the AuthContext
+      setDebugInfo(`Login error: ${err.message || 'Invalid credentials'}`);
+      // No need to do anything else as error is handled in AuthContext
     }
   };
 
@@ -51,6 +60,12 @@ const Login = () => {
       )}
       
       {loading && <Loader />}
+      
+      {debugInfo && (
+        <div className="alert alert-info" style={{fontSize: "12px", marginBottom: "10px"}}>
+          {debugInfo}
+        </div>
+      )}
       
       <form onSubmit={submitHandler}>
         <div className="form-row">

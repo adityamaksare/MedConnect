@@ -23,7 +23,7 @@ const DoctorList = () => {
   const extractSpecializations = async () => {
     try {
       const { data } = await api.get('/doctors?limit=100'); // Increase limit to get all doctors
-      const doctorsData = data.data;
+      const doctorsData = data || [];
       
       // Extract unique specializations from the doctor data
       const uniqueSpecializations = [...new Set(doctorsData.map(doctor => doctor.specialization))];
@@ -53,7 +53,7 @@ const DoctorList = () => {
       
       console.log('Fetching doctors with endpoint:', endpoint);
       const { data } = await api.get(endpoint);
-      setDoctors(data.data);
+      setDoctors(data); // Fixed to use direct data instead of data.data
       setLoading(false);
     } catch (err) {
       setError(
@@ -128,13 +128,13 @@ const DoctorList = () => {
         <Loader />
       ) : error ? (
         <Message variant="danger">{error}</Message>
-      ) : doctors.length === 0 ? (
+      ) : !doctors || doctors.length === 0 ? (
         <Message>No doctors found matching your criteria</Message>
       ) : (
         <>
           <p className="text-muted mb-4">Found {doctors.length} doctor{doctors.length !== 1 ? 's' : ''}</p>
           <Row>
-            {doctors.map((doctor) => (
+            {doctors && doctors.map((doctor) => (
               <Col key={doctor._id} sm={12} md={6} lg={4} xl={3} className="mb-4">
                 <DoctorCard doctor={doctor} />
               </Col>

@@ -16,8 +16,14 @@ const PatientDashboard = () => {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!userInfo || userInfo.role !== 'patient') {
+    if (!userInfo) {
       navigate('/login');
+      return;
+    }
+    
+    // Redirect doctor users to doctor dashboard
+    if (userInfo.isDoctor) {
+      navigate('/doctor-dashboard');
       return;
     }
     
@@ -27,15 +33,51 @@ const PatientDashboard = () => {
   const fetchAppointments = async () => {
     try {
       setLoading(true);
-      const { data } = await api.get('/appointments');
-      setAppointments(data.data);
-      setLoading(false);
+      setError('');  // Clear any previous errors
+      setAppointments([]); // Initialize with empty array to prevent undefined
+
+      console.log('Fetching appointments...');
+      const response = await api.get('/appointments');
+      console.log('Appointments response:', response);
+      
+      // Check if we got a response at all
+      if (!response) {
+        console.error('No response received from appointments API');
+        setError('Server did not respond. Please try again later.');
+        return;
+      }
+      
+      // Check the structure of the response
+      if (response.data === null || response.data === undefined) {
+        console.error('Appointments response has no data property');
+        setError('Unexpected response format from server');
+        return;
+      }
+      
+      // Handle the different possible response structures
+      if (Array.isArray(response.data)) {
+        // If response.data is already an array
+        console.log('Appointments received as array:', response.data.length);
+        setAppointments(response.data);
+      } else if (response.data && Array.isArray(response.data.data)) {
+        // If response.data has a nested data property that's an array
+        console.log('Appointments received in nested data property:', response.data.data.length);
+        setAppointments(response.data.data);
+      } else {
+        // Fallback to empty array if response structure is unexpected
+        console.error('Unexpected appointments response structure:', response.data);
+        setError('Unexpected data format from server');
+        setAppointments([]);
+      }
     } catch (err) {
+      console.error('Error fetching appointments:', err);
       setError(
         err.response && err.response.data.message
           ? err.response.data.message
-          : 'Error fetching appointments'
+          : 'Error fetching appointments. Please try again later.'
       );
+      setAppointments([]); // Set to empty array on error
+    } finally {
       setLoading(false);
     }
   };
@@ -70,6 +112,10 @@ const PatientDashboard = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
+    if (!appointments || !Array.isArray(appointments)) {
+      return [];
+    }
+    
     return appointments.filter(app => {
       const appDate = new Date(app.appointmentDate);
       appDate.setHours(0, 0, 0, 0);
@@ -81,6 +127,10 @@ const PatientDashboard = () => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
+    if (!appointments || !Array.isArray(appointments)) {
+      return [];
+    }
+    
     return appointments.filter(app => {
       const appDate = new Date(app.appointmentDate);
       appDate.setHours(0, 0, 0, 0);
@@ -90,15 +140,18 @@ const PatientDashboard = () => {
 
   const handleCancelAppointment = async (id) => {
     try {
-      await api.put(`/appointments/${id}`, { status: 'cancelled' });
+      console.log('Cancelling appointment with ID:', id);
+      // Use the cancellation-specific endpoint
+      const response = await api.put(`/appointments/${id}/cancel`);
+      console.log('Cancel response:', response.data);
       
       // Update local state
       setAppointments(appointments.map(app => 
         app._id === id ? { ...app, status: 'cancelled' } : app
       ));
     } catch (err) {
-      // Handle error silently
       console.error('Error cancelling appointment:', err);
+      // Could display an error message here if needed
     }
   };
 
@@ -139,13 +192,13 @@ const PatientDashboard = () => {
                   </Card.Title>
                   <ListGroup variant="flush">
                     <ListGroup.Item>
-                      Upcoming Appointments: <span className="fw-bold">{getUpcomingAppointments().length}</span>
+                      Upcoming Appointments: <span className="fw-bold">{Array.isArray(appointments) ? getUpcomingAppointments().length : 0}</span>
                     </ListGroup.Item>
                     <ListGroup.Item>
-                      Past Appointments: <span className="fw-bold">{getPastAppointments().length}</span>
+                      Past Appointments: <span className="fw-bold">{Array.isArray(appointments) ? getPastAppointments().length : 0}</span>
                     </ListGroup.Item>
                     <ListGroup.Item>
-                      Total Appointments: <span className="fw-bold">{appointments.length}</span>
+                      Total Appointments: <span className="fw-bold">{Array.isArray(appointments) ? appointments.length : 0}</span>
                     </ListGroup.Item>
                   </ListGroup>
                 </Card.Body>
@@ -167,7 +220,9 @@ const PatientDashboard = () => {
                     <FaClock className="me-2" /> Upcoming Appointments
                   </Card.Title>
                   
-                  {getUpcomingAppointments().length === 0 ? (
+                  {!Array.isArray(appointments) ? (
+                    <Loader />
+                  ) : getUpcomingAppointments().length === 0 ? (
                     <Message>No upcoming appointments</Message>
                   ) : (
                     <ListGroup variant="flush">
@@ -177,12 +232,18 @@ const PatientDashboard = () => {
                             <div>
                               <h5 className="mb-0">
                                 <FaUserMd className="me-2" />
-                                {appointment.doctor && appointment.doctor.user 
-                                  ? `${appointment.doctor.user.name} (${appointment.doctor.specialization})`
-                                  : 'Doctor information unavailable'}
+                                {appointment.doctor ? 
+                                  (appointment.doctor.name ? 
+                                    `Dr. ${appointment.doctor.name} (${appointment.doctor.specialization || 'Specialist'})` :
+                                    (appointment.doctor.user && appointment.doctor.user.name ?
+                                      `Dr. ${appointment.doctor.user.name} (${appointment.doctor.specialization || 'Specialist'})` :
+                                      'Doctor information unavailable')
+                                  ) : 
+                                  'Doctor information unavailable'
+                                }
                               </h5>
                               <p className="text-muted mb-0">
-                                {formatDate(appointment.appointmentDate)} at {appointment.appointmentTime}
+                                {formatDate(appointment.appointmentDate)} at {appointment.timeSlot || appointment.appointmentTime}
                               </p>
                             </div>
                             {getStatusBadge(appointment.status)}
@@ -213,7 +274,7 @@ const PatientDashboard = () => {
                     </ListGroup>
                   )}
                   
-                  {getUpcomingAppointments().length > 5 && (
+                  {Array.isArray(appointments) && getUpcomingAppointments().length > 5 && (
                     <div className="text-center mt-3">
                       <Button 
                         onClick={() => navigate('/appointments')} 
@@ -232,7 +293,9 @@ const PatientDashboard = () => {
                     <FaCalendarAlt className="me-2" /> Recent Appointment History
                   </Card.Title>
                   
-                  {getPastAppointments().length === 0 ? (
+                  {!Array.isArray(appointments) ? (
+                    <Loader />
+                  ) : getPastAppointments().length === 0 ? (
                     <Message>No past appointments</Message>
                   ) : (
                     <ListGroup variant="flush">
@@ -242,12 +305,18 @@ const PatientDashboard = () => {
                             <div>
                               <h5 className="mb-0">
                                 <FaUserMd className="me-2" />
-                                {appointment.doctor && appointment.doctor.user 
-                                  ? `${appointment.doctor.user.name} (${appointment.doctor.specialization})`
-                                  : 'Doctor information unavailable'}
+                                {appointment.doctor ? 
+                                  (appointment.doctor.name ? 
+                                    `Dr. ${appointment.doctor.name} (${appointment.doctor.specialization || 'Specialist'})` :
+                                    (appointment.doctor.user && appointment.doctor.user.name ?
+                                      `Dr. ${appointment.doctor.user.name} (${appointment.doctor.specialization || 'Specialist'})` :
+                                      'Doctor information unavailable')
+                                  ) : 
+                                  'Doctor information unavailable'
+                                }
                               </h5>
                               <p className="text-muted mb-0">
-                                {formatDate(appointment.appointmentDate)} at {appointment.appointmentTime}
+                                {formatDate(appointment.appointmentDate)} at {appointment.timeSlot || appointment.appointmentTime}
                               </p>
                             </div>
                             {getStatusBadge(appointment.status)}
@@ -266,7 +335,7 @@ const PatientDashboard = () => {
                     </ListGroup>
                   )}
                   
-                  {getPastAppointments().length > 3 && (
+                  {Array.isArray(appointments) && getPastAppointments().length > 3 && (
                     <div className="text-center mt-3">
                       <Button 
                         onClick={() => navigate('/appointments')} 

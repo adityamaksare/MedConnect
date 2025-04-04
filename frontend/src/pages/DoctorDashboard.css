@@ -1,0 +1,70 @@
+/* Mobile-responsive styles for Doctor Dashboard */
+
+/* Make the appointment tabs scrollable on mobile */
+.appointment-tabs .nav-tabs {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.appointment-tabs .nav-item {
+  display: inline-block;
+  float: none;
+}
+
+.appointment-tabs .nav-link {
+  padding: 0.5rem 0.75rem;
+}
+
+/* Mobile-specific styles */
+@media (max-width: 767.98px) {
+  .card-title {
+    font-size: 1.1rem;
+  }
+  
+  .btn-sm {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+  }
+  
+  /* Fix for the doctor dashboard container */
+  .doctor-dashboard-container {
+    padding-left: 0.5rem;
+    padding-right: 0.5rem;
+  }
+  
+  /* Make buttons stack better on mobile */
+  .appointment-buttons-mobile .btn {
+    margin-bottom: 0.5rem;
+  }
+  
+  /* Improve tab navigation on mobile */
+  .nav-tabs .nav-link {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+  }
+  
+  /* Fix for appointment list items */
+  .list-group-item {
+    padding: 0.75rem;
+  }
+}
+
+/* Fix scrolling issues on appointment tabs on all devices */
+.appointment-tabs {
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+/* Make appointment cards more readable */
+.list-group-item.appointment-item {
+  border-radius: 8px;
+  margin-bottom: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* Status badges styling */
+.status-badge {
+  padding: 0.35em 0.65em;
+  font-size: 0.75em;
+} 

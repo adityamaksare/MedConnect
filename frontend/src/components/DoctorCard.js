@@ -1,7 +1,7 @@
 import React from 'react';
-import { Card, Button, Row, Col } from 'react-bootstrap';
+import { Card, Button } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
-import { FaStar, FaStarHalfAlt, FaRegStar, FaUserMd } from 'react-icons/fa';
+import { FaStar, FaStarHalfAlt, FaRegStar } from 'react-icons/fa';
 import '../styles/DoctorCard.css';
 
 const DoctorCard = ({ doctor }) => {
@@ -103,10 +103,10 @@ const DoctorCard = ({ doctor }) => {
     }
 
     // Determine the gender based on the doctor's name
-    const gender = determineGender(doctor.user.name);
+    const gender = determineGender(doctor.name || (doctor.user ? doctor.user.name : 'Unknown'));
     
     // Generate a consistent hash value from the doctor's name
-    const nameHash = getNameHash(doctor.user.name);
+    const nameHash = getNameHash(doctor.name || (doctor.user ? doctor.user.name : 'Unknown'));
     
     if (gender === 'female') {
       // We have 8 unique female doctor images
@@ -119,36 +119,44 @@ const DoctorCard = ({ doctor }) => {
     }
   };
 
+  // Fall back to default values if properties are missing
+  const doctorName = doctor.name || (doctor.user ? doctor.user.name : 'Unknown');
+  const doctorExp = doctor.experience || 0;
+  const doctorFees = doctor.fees || 0;
+  const doctorBio = doctor.bio || 'No bio available';
+  const doctorRating = doctor.rating || 0;
+  const doctorReviewCount = doctor.numReviews || 0;
+
   return (
     <Card className="doctor-card h-100 shadow-sm">
       <div className="doctor-image-container">
         <img 
           src={getImageUrl()} 
-          alt={doctor.user.name} 
+          alt={doctorName} 
         />
         <div className="specialization-badge">
           {doctor.specialization}
         </div>
       </div>
       <Card.Body className="d-flex flex-column">
-        <Card.Title className="card-title">{doctor.user.name}</Card.Title>
+        <Card.Title className="card-title">{doctorName}</Card.Title>
         <Card.Subtitle className="mb-2 text-muted">
-          {doctor.experience} years experience
+          {doctorExp} years experience
         </Card.Subtitle>
         
         <div className="rating-container">
           <div className="rating-stars">
-            {renderRating(doctor.rating)}
+            {renderRating(doctorRating)}
           </div>
-          <span className="review-count">({doctor.reviewCount})</span>
+          <span className="review-count">({doctorReviewCount})</span>
         </div>
         
         <Card.Text className="mb-2">
-          <span className="fees">₹{doctor.fees}</span>
+          <span className="fees">₹{doctorFees}</span>
         </Card.Text>
         
         <Card.Text className="doctor-bio mb-3 flex-grow-1">
-          {doctor.bio ? (doctor.bio.length > 100 ? `${doctor.bio.substring(0, 100)}...` : doctor.bio) : 'No bio available.'}
+          {doctorBio.length > 100 ? `${doctorBio.substring(0, 100)}...` : doctorBio}
         </Card.Text>
         
         <Button 

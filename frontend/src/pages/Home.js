@@ -43,9 +43,11 @@ const Home = () => {
       try {
         setLoading(true);
         const { data } = await api.get('/doctors?limit=4');
-        setTopDoctors(data.data);
+        console.log('Fetched top doctors:', data);
+        setTopDoctors(data);
         setLoading(false);
       } catch (err) {
+        console.error('Error fetching top doctors:', err);
         setError('Failed to fetch top doctors');
         setLoading(false);
       }
@@ -231,52 +233,61 @@ const Home = () => {
               viewport={{ once: true, margin: "-50px" }}
             >
               <Row>
-                {topDoctors.slice(0, 4).map((doctor, index) => (
-                  <Col key={doctor._id} lg={3} md={6} className="mb-4">
-                    <motion.div
-                      variants={fadeInUp}
-                      whileHover={{ y: -10, transition: { duration: 0.2 } }}
-                    >
-                      <Card className="doctor-card h-100 border-0 shadow-sm">
-                        <div className="text-center pt-4">
-                          <motion.img
-                            src={`https://ui-avatars.com/api/?name=${doctor.user.name}&background=random&size=150`}
-                            alt={doctor.user.name}
-                            className="rounded-circle mb-3 border"
-                            width="100"
-                            height="100"
-                            whileHover={{ scale: 1.1 }}
-                            transition={{ type: "spring", stiffness: 300 }}
-                          />
-                        </div>
-                        <Card.Body className="text-center">
-                          <Card.Title className="fw-bold">{doctor.user.name}</Card.Title>
-                          <Card.Subtitle className="mb-2 text-muted">{doctor.specialization}</Card.Subtitle>
-                          <div className="mb-2">
-                            <small className="text-warning">
-                              {'★'.repeat(Math.floor(doctor.rating))}
-                              {'☆'.repeat(5 - Math.floor(doctor.rating))}
-                              <span className="ms-1 text-muted">({doctor.reviewCount} reviews)</span>
-                            </small>
+                {topDoctors && topDoctors.length > 0 ? (
+                  topDoctors.slice(0, 4).map((doctor, index) => (
+                    <Col key={doctor._id} lg={3} md={6} className="mb-4">
+                      <motion.div
+                        variants={fadeInUp}
+                        whileHover={{ y: -10, transition: { duration: 0.2 } }}
+                      >
+                        <Card className="doctor-card h-100 border-0 shadow-sm">
+                          <div className="text-center pt-4">
+                            <motion.img
+                              src={`https://ui-avatars.com/api/?name=${doctor.user?.name || 'Doctor'}&background=random&size=150`}
+                              alt={doctor.user?.name || 'Doctor'}
+                              className="rounded-circle mb-3 border"
+                              width="100"
+                              height="100"
+                              whileHover={{ scale: 1.1 }}
+                              transition={{ type: "spring", stiffness: 300 }}
+                            />
                           </div>
-                          <Card.Text>
-                            <small className="text-muted">{doctor.experience} years of experience</small>
-                          </Card.Text>
-                          <motion.div whileHover={{ scale: 1.05 }}>
-                            <Button 
-                              as={Link} 
-                              to={`/doctors/${doctor._id}`} 
-                              variant="outline-primary" 
-                              size="sm"
-                            >
-                              View Profile
-                            </Button>
-                          </motion.div>
-                        </Card.Body>
-                      </Card>
-                    </motion.div>
+                          <Card.Body className="text-center">
+                            <Card.Title className="fw-bold">{doctor.user?.name || 'Doctor'}</Card.Title>
+                            <Card.Subtitle className="mb-2 text-muted">{doctor.specialization || 'Specialist'}</Card.Subtitle>
+                            <div className="mb-2">
+                              <small className="text-warning">
+                                {'★'.repeat(Math.floor(doctor.rating || 0))}
+                                {'☆'.repeat(5 - Math.floor(doctor.rating || 0))}
+                                <span className="ms-1 text-muted">({doctor.numReviews || 0} reviews)</span>
+                              </small>
+                            </div>
+                            <Card.Text>
+                              <small className="text-muted">{doctor.experience || 0} years of experience</small>
+                            </Card.Text>
+                            <motion.div whileHover={{ scale: 1.05 }}>
+                              <Button 
+                                as={Link} 
+                                to={`/doctors/${doctor._id}`} 
+                                variant="outline-primary" 
+                                size="sm"
+                              >
+                                View Profile
+                              </Button>
+                            </motion.div>
+                          </Card.Body>
+                        </Card>
+                      </motion.div>
+                    </Col>
+                  ))
+                ) : (
+                  <Col xs={12}>
+                    <div className="text-center py-5">
+                      <h5 className="text-muted">No doctors available at the moment</h5>
+                      <p>Please check back later for top doctors.</p>
+                    </div>
                   </Col>
-                ))}
+                )}
               </Row>
             </motion.div>
           )}

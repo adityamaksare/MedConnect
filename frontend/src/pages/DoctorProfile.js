@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Container, 
@@ -46,31 +46,54 @@ const DoctorProfile = () => {
   const [step, setStep] = useState(1); // 1: Appointment details, 2: Payment
   const [paymentSuccess, setPaymentSuccess] = useState(false);
 
-  useEffect(() => {
-    fetchDoctorDetails();
-  }, [id]);
-
-  const fetchDoctorDetails = async () => {
+  // Define fetchDoctorDetails before useEffect
+  const fetchDoctorDetails = useCallback(async () => {
     try {
       setLoading(true);
+      console.log('Fetching doctor details for ID:', id);
+      
       const { data } = await api.get(`/doctors/${id}`);
-      setDoctor(data.data);
+      console.log('Doctor data received:', data);
+      
+      if (!data) {
+        throw new Error('No data received from server');
+      }
+      
+      setDoctor(data);
       
       // Update the page title with doctor's name
-      if (data.data && data.data.user && data.data.user.name) {
-        document.title = `Dr. ${data.data.user.name} | MedConnect`;
+      if (data && data.name) {
+        document.title = `${data.name} | MedConnect`;
       }
       
       setLoading(false);
     } catch (err) {
-      setError(
-        err.response && err.response.data.message
-          ? err.response.data.message
-          : 'Error fetching doctor details'
-      );
+      console.error('Error fetching doctor details:', err);
+      // Check for specific error types and provide more helpful messages
+      if (err.response && err.response.status === 404) {
+        setError('Doctor not found. The doctor may have been removed or the URL is incorrect.');
+      } else {
+        setError(
+          err.response && err.response.data.message
+            ? err.response.data.message
+            : 'Error fetching doctor details. Please try again later.'
+        );
+      }
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  // Now use fetchDoctorDetails in useEffect
+  useEffect(() => {
+    fetchDoctorDetails();
+    
+    // Cleanup function for component unmount
+    return () => {
+      // Reset title when component unmounts
+      document.title = 'MedConnect';
+      // Cancel any pending requests or timers here
+    };
+  }, [id, fetchDoctorDetails]);
 
   // Display doctor rating with stars
   const renderRating = (rating) => {
@@ -103,7 +126,7 @@ const DoctorProfile = () => {
       return;
     }
     
-    if (userInfo.role === 'doctor') {
+    if (userInfo.isDoctor) {
       setBookingError("Doctors can't book appointments");
       return;
     }
@@ -114,25 +137,84 @@ const DoctorProfile = () => {
   };
 
   const nextStep = () => {
-    if (!appointmentDate || !appointmentTime || !reason) {
-      setBookingError('Please fill in all fields');
+    setBookingError('');
+    
+    // Better validation with more helpful error messages
+    if (!appointmentDate) {
+      setBookingError('Please select an appointment date');
       return;
     }
-    setBookingError('');
+    
+    if (!appointmentTime) {
+      setBookingError('Please select an appointment time');
+      return;
+    }
+    
+    if (!reason || reason.trim().length < 10) {
+      setBookingError('Please provide a detailed reason for your visit (minimum 10 characters)');
+      return;
+    }
+    
+    // Check if selected date is today
+    const today = new Date();
+    const selectedDate = new Date(appointmentDate);
+    if (selectedDate.toDateString() === today.toDateString()) {
+      // For same-day appointments, validate the time
+      const now = new Date();
+      const [hours, minutes] = appointmentTime.split(':').map(Number);
+      const appointmentDateTime = new Date(selectedDate);
+      appointmentDateTime.setHours(hours, minutes);
+      
+      // Check if appointment time is at least 2 hours from now
+      if (appointmentDateTime.getTime() - now.getTime() < 2 * 60 * 60 * 1000) {
+        setBookingError('Same-day appointments must be booked at least 2 hours in advance');
+        return;
+      }
+    }
+    
+    // All validations passed
     setStep(2);
   };
 
   const validatePaymentDetails = () => {
     if (paymentMethod === 'card') {
+      // Check if all fields are filled
       if (!cardName || !cardNumber || !cardExpiry || !cardCVC) {
         setBookingError('Please fill in all card details');
         return false;
       }
-      if (cardNumber.length < 16) {
-        setBookingError('Please enter a valid card number');
+      
+      // Validate card number (basic check for length and numeric only)
+      if (!/^\d{16}$/.test(cardNumber.replace(/\s/g, ''))) {
+        setBookingError('Please enter a valid 16-digit card number');
+        return false;
+      }
+      
+      // Validate expiry date format (MM/YY)
+      if (!/^\d{2}\/\d{2}$/.test(cardExpiry)) {
+        setBookingError('Please enter a valid expiry date in MM/YY format');
+        return false;
+      }
+      
+      // Validate expiry date is in the future
+      const [month, year] = cardExpiry.split('/');
+      const expiryDate = new Date();
+      expiryDate.setFullYear(2000 + parseInt(year, 10));
+      expiryDate.setMonth(parseInt(month, 10) - 1);
+      expiryDate.setDate(1);
+      
+      if (expiryDate < new Date()) {
+        setBookingError('Card has expired. Please use a valid card');
+        return false;
+      }
+      
+      // Validate CVC (3 or 4 digits)
+      if (!/^\d{3,4}$/.test(cardCVC)) {
+        setBookingError('Please enter a valid 3 or 4 digit CVC code');
         return false;
       }
     }
+    
     return true;
   };
 
@@ -195,9 +277,9 @@ const DoctorProfile = () => {
       
       // Then book appointment
       await api.post('/appointments', {
-        doctorId: doctor._id,
-        appointmentDate,
-        appointmentTime,
+        doctor: doctor._id,
+        appointmentDate: new Date(appointmentDate).toISOString(),
+        timeSlot: appointmentTime,
         reason,
         paymentMethod,
         isPaid: true
@@ -207,7 +289,7 @@ const DoctorProfile = () => {
       setTimeout(() => {
       setBookingLoading(false);
       setShowModal(false);
-        success(`Appointment booked successfully with Dr. ${doctor.user.name}`);
+        success(`Appointment booked successfully with Dr. ${doctor.name}`);
       navigate('/appointments');
       }, 1500);
       
@@ -226,34 +308,43 @@ const DoctorProfile = () => {
       {loading ? (
         <Loader />
       ) : error ? (
-        <Message variant="danger">{error}</Message>
+        <div className="text-center py-5">
+          <Message variant="danger">{error}</Message>
+          <Button 
+            variant="primary" 
+            className="mt-3" 
+            onClick={() => navigate('/doctors')}
+          >
+            View All Doctors
+          </Button>
+        </div>
       ) : doctor ? (
         <>
           <Row>
             <Col md={8}>
               <Card className="mb-4">
                 <Card.Body>
-                  <Card.Title as="h2">{doctor.user.name}</Card.Title>
+                  <Card.Title as="h2">{doctor.name}</Card.Title>
                   <Card.Subtitle className="mb-2 text-muted">
                     {doctor.specialization} | {doctor.experience} years experience
                   </Card.Subtitle>
                   
                   <div className="mb-3">
                     {renderRating(doctor.rating)}
-                    <span className="ms-1">({doctor.reviewCount} reviews)</span>
+                    <span className="ms-1">({doctor.numReviews} reviews)</span>
                   </div>
                   
-                  <Card.Text>{doctor.bio}</Card.Text>
+                  <Card.Text>{doctor.bio || "No bio information provided"}</Card.Text>
                   
                   <ListGroup variant="flush" className="mt-4">
                     <ListGroup.Item>
-                      <FaMapMarkerAlt className="me-2" /> {doctor.address}
+                      <FaMapMarkerAlt className="me-2" /> {doctor.address || "Consultation Address Available In-Person"}
                     </ListGroup.Item>
                     <ListGroup.Item>
-                      <FaPhone className="me-2" /> {doctor.user.phoneNumber}
+                      <FaPhone className="me-2" /> {doctor.phone || "Contact via email"}
                     </ListGroup.Item>
                     <ListGroup.Item>
-                      <FaEnvelope className="me-2" /> {doctor.user.email}
+                      <FaEnvelope className="me-2" /> {doctor.user?.email || "No email provided"}
                     </ListGroup.Item>
                   </ListGroup>
                 </Card.Body>
@@ -270,19 +361,24 @@ const DoctorProfile = () => {
                   
                   <Card.Title className="mt-3">Available Timings</Card.Title>
                   <ListGroup variant="flush" className="mb-3">
-                    {doctor.timings.map((timing, index) => (
-                      <ListGroup.Item key={index}>
-                        <strong>{timing.day}:</strong> {timing.startTime} - {timing.endTime}
-                        {!timing.isAvailable && <span className="text-danger ms-2">(Unavailable)</span>}
-                      </ListGroup.Item>
-                    ))}
+                    {doctor.availableDays && doctor.availableDays.length > 0 ? (
+                      doctor.availableDays.map((day, index) => (
+                        <ListGroup.Item key={index}>
+                          <strong>{day}:</strong> {doctor.timings && doctor.timings.length >= 2 
+                            ? `${doctor.timings[0]} - ${doctor.timings[1]}`
+                            : "Hours not specified"}
+                        </ListGroup.Item>
+                      ))
+                    ) : (
+                      <ListGroup.Item>No available days specified</ListGroup.Item>
+                    )}
                   </ListGroup>
                   
                   <Button
                     onClick={handleBooking}
                     variant="primary"
                     className="w-100"
-                    disabled={!userInfo || userInfo.role === 'doctor'}
+                    disabled={!userInfo || userInfo.isDoctor}
                   >
                     Book Appointment
                   </Button>
@@ -292,7 +388,7 @@ const DoctorProfile = () => {
                       <small>Please <a href="/login">login</a> to book an appointment</small>
                     </Card.Text>
                   )}
-                  {userInfo && userInfo.role === 'doctor' && (
+                  {userInfo && userInfo.isDoctor && (
                     <Card.Text className="text-danger text-center mt-2">
                       <small>Doctors can't book appointments</small>
                     </Card.Text>
@@ -360,7 +456,7 @@ const DoctorProfile = () => {
                   <>
                     <div className="payment-summary mb-4">
                       <h5>Appointment Summary</h5>
-                      <p className="mb-1"><strong>Doctor:</strong> {doctor?.user.name}</p>
+                      <p className="mb-1"><strong>Doctor:</strong> {doctor?.name}</p>
                       <p className="mb-1"><strong>Date:</strong> {new Date(appointmentDate).toLocaleDateString()}</p>
                       <p className="mb-1"><strong>Time:</strong> {appointmentTime}</p>
                       <p className="mb-1"><strong>Fee:</strong> ₹{doctor?.fees}</p>
@@ -451,9 +547,9 @@ const DoctorProfile = () => {
                                 // Book the appointment
                                 try {
                                   await api.post('/appointments', {
-                                    doctorId: doctor._id,
-                                    appointmentDate,
-                                    appointmentTime,
+                                    doctor: doctor._id,
+                                    appointmentDate: new Date(appointmentDate).toISOString(),
+                                    timeSlot: appointmentTime,
                                     reason,
                                     paymentMethod: 'phonepe',
                                     isPaid: true
@@ -463,7 +559,7 @@ const DoctorProfile = () => {
                                   setTimeout(() => {
                                     setBookingLoading(false);
                                     setShowModal(false);
-                                    success(`Appointment booked successfully with Dr. ${doctor.user.name}`);
+                                    success(`Appointment booked successfully with Dr. ${doctor.name}`);
                                     navigate('/appointments');
                                   }, 1500);
                                 } catch (err) {
@@ -508,9 +604,9 @@ const DoctorProfile = () => {
                                 // Book the appointment
                                 try {
                                   await api.post('/appointments', {
-                                    doctorId: doctor._id,
-                                    appointmentDate,
-                                    appointmentTime,
+                                    doctor: doctor._id,
+                                    appointmentDate: new Date(appointmentDate).toISOString(),
+                                    timeSlot: appointmentTime,
                                     reason,
                                     paymentMethod: 'googlepay',
                                     isPaid: true
@@ -520,7 +616,7 @@ const DoctorProfile = () => {
                                   setTimeout(() => {
                                     setBookingLoading(false);
                                     setShowModal(false);
-                                    success(`Appointment booked successfully with Dr. ${doctor.user.name}`);
+                                    success(`Appointment booked successfully with Dr. ${doctor.name}`);
                                     navigate('/appointments');
                                   }, 1500);
                                 } catch (err) {

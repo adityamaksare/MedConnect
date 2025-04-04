@@ -52,12 +52,22 @@ const AppointmentItem = ({ appointment, showPatient = false }) => {
           {showPatient ? (
             <>
               <FaUser className="me-2" />
-              {appointment.patient && appointment.patient.name}
+              {appointment.patient ? 
+                (typeof appointment.patient === 'string' ? appointment.patient : appointment.patient.name || 'Unknown Patient') 
+                : 'Unknown Patient'
+              }
             </>
           ) : (
             <>
               <FaUserMd className="me-2" />
-              {appointment.doctor && appointment.doctor.user && appointment.doctor.user.name}
+              {appointment.doctor ? 
+                (appointment.doctor.name ? 
+                  `Dr. ${appointment.doctor.name}` : 
+                  (appointment.doctor.user && appointment.doctor.user.name ? 
+                    `Dr. ${appointment.doctor.user.name}` : 'Unknown Doctor')
+                ) 
+                : 'Unknown Doctor'
+              }
             </>
           )}
         </h5>
@@ -70,7 +80,7 @@ const AppointmentItem = ({ appointment, showPatient = false }) => {
       </p>
       <p className="mb-1">
         <FaClock className="me-2" />
-        <strong>Time:</strong> {appointment.appointmentTime}
+        <strong>Time:</strong> {appointment.timeSlot || appointment.appointmentTime || 'Not specified'}
       </p>
       <p className="mb-2">
         <strong>Reason:</strong> {appointment.reason}
@@ -78,7 +88,7 @@ const AppointmentItem = ({ appointment, showPatient = false }) => {
       
       <div className="d-flex justify-content-between align-items-center mb-3">
         <p className="mb-0">
-          <strong>Fee:</strong> ₹{appointment.fees}
+          <strong>Fee:</strong> {appointment.fees ? `₹${appointment.fees}` : 'Not specified'}
         </p>
         <div>
           {appointment.isPaid ? (

@@ -7,6 +7,7 @@ import { useAlerts } from '../context/AlertContext';
 import Message from '../components/Message';
 import Loader from '../components/Loader';
 import api from '../utils/api';
+import './DoctorDashboard.css'; // Import custom CSS
 
 const DoctorDashboard = () => {
   const navigate = useNavigate();
@@ -41,11 +42,21 @@ const DoctorDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview');
 
   useEffect(() => {
-    if (!userInfo || userInfo.role !== 'doctor') {
+    console.log('Current user info:', userInfo);
+    
+    if (!userInfo) {
+      console.log('No user info, redirecting to login');
       navigate('/login');
       return;
     }
     
+    if (userInfo.role !== 'doctor') {
+      console.log(`User role ${userInfo.role} is not 'doctor', redirecting to login`);
+      navigate('/login');
+      return;
+    }
+    
+    console.log('User is a doctor, fetching profile and appointments');
     fetchDoctorProfile();
     fetchAppointments();
   }, [userInfo, navigate]);
@@ -54,25 +65,32 @@ const DoctorDashboard = () => {
     try {
       setLoading(true);
       
-      // In a real app, you would have an endpoint to get the doctor's profile
-      // For now, we'll check if the doctor has a profile
-      const { data } = await api.get('/doctors');
-      const doctorData = data.data.find(doc => doc.user && doc.user._id === userInfo._id);
+      // Fetch all doctors
+      const { data: doctors } = await api.get('/doctors');
+      console.log('Fetched doctors:', doctors);
+      
+      // Find the doctor profile for the current user
+      const doctorData = doctors.find(doc => doc.user && doc.user._id === userInfo._id);
+      console.log('Current user ID:', userInfo._id);
+      console.log('Found doctor profile:', doctorData);
       
       if (doctorData) {
         setDoctorProfile(doctorData);
-        setSpecialization(doctorData.specialization);
-        setExperience(doctorData.experience);
-        setFees(doctorData.fees);
-        setAddress(doctorData.address);
-        setBio(doctorData.bio);
+        setSpecialization(doctorData.specialization || '');
+        setExperience(doctorData.experience || '');
+        setFees(doctorData.fees || '');
+        setAddress(doctorData.address || '');
+        setBio(doctorData.bio || '');
         if (doctorData.timings && doctorData.timings.length > 0) {
           setTimings(doctorData.timings);
         }
+      } else {
+        console.log('No doctor profile found for current user');
       }
       
       setLoading(false);
     } catch (err) {
+      console.error('Error fetching doctor profile:', err);
       setError(
         err.response && err.response.data.message
           ? err.response.data.message
@@ -86,10 +104,16 @@ const DoctorDashboard = () => {
     try {
       setAppointmentsLoading(true);
       setAppointmentsError('');
-      const { data } = await api.get('/appointments');
-      setAppointments(data.data);
+      
+      // For doctor dashboard, we need to get doctor-specific appointments
+      const { data: appointmentsData } = await api.get('/appointments/doctor');
+      console.log('Fetched appointments:', appointmentsData);
+      
+      // Directly use the data from the response
+      setAppointments(appointmentsData || []);
       setAppointmentsLoading(false);
     } catch (err) {
+      console.error('Error fetching appointments:', err);
       setAppointmentsError(
         err.response && err.response.data.message
           ? err.response.data.message
@@ -149,44 +173,95 @@ const DoctorDashboard = () => {
   };
 
   const getPendingAppointmentsCount = () => {
-    return appointments.filter(app => app.status === 'pending').length;
+    if (!appointments || !Array.isArray(appointments)) {
+      return 0;
+    }
+    return appointments.filter(app => app && app.status === 'pending').length;
   };
 
   const getConfirmedAppointmentsCount = () => {
-    return appointments.filter(app => app.status === 'confirmed').length;
+    if (!appointments || !Array.isArray(appointments)) {
+      return 0;
+    }
+    return appointments.filter(app => app && app.status === 'confirmed').length;
   };
 
   const getTodayAppointments = () => {
+    if (!appointments || !Array.isArray(appointments)) {
+      console.error('Appointments data is not an array:', appointments);
+      return [];
+    }
+    
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
     return appointments.filter(app => {
-      const appDate = new Date(app.appointmentDate);
-      appDate.setHours(0, 0, 0, 0);
-      return appDate.getTime() === today.getTime();
-    }).sort((a, b) => a.appointmentTime.localeCompare(b.appointmentTime));
+      if (!app || !app.appointmentDate) {
+        console.warn('Invalid appointment data:', app);
+        return false;
+      }
+      
+      try {
+        const appDate = new Date(app.appointmentDate);
+        appDate.setHours(0, 0, 0, 0);
+        return appDate.getTime() === today.getTime();
+      } catch (err) {
+        console.error('Error parsing appointment date:', err);
+        return false;
+      }
+    }).sort((a, b) => (a.timeSlot || '').localeCompare(b.timeSlot || ''));
   };
 
   const getUpcomingAppointments = () => {
+    if (!appointments || !Array.isArray(appointments)) {
+      console.error('Appointments data is not an array:', appointments);
+      return [];
+    }
+    
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
     return appointments.filter(app => {
-      const appDate = new Date(app.appointmentDate);
-      appDate.setHours(0, 0, 0, 0);
-      return appDate.getTime() > today.getTime() && 
-        (app.status === 'pending' || app.status === 'confirmed');
+      if (!app || !app.appointmentDate) {
+        console.warn('Invalid appointment data:', app);
+        return false;
+      }
+      
+      try {
+        const appDate = new Date(app.appointmentDate);
+        appDate.setHours(0, 0, 0, 0);
+        return appDate.getTime() > today.getTime() && 
+          (app.status === 'pending' || app.status === 'confirmed');
+      } catch (err) {
+        console.error('Error parsing appointment date:', err);
+        return false;
+      }
     }).sort((a, b) => new Date(a.appointmentDate) - new Date(b.appointmentDate));
   };
 
   const getPastAppointments = () => {
+    if (!appointments || !Array.isArray(appointments)) {
+      console.error('Appointments data is not an array:', appointments);
+      return [];
+    }
+    
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
     return appointments.filter(app => {
-      const appDate = new Date(app.appointmentDate);
-      appDate.setHours(0, 0, 0, 0);
-      return appDate.getTime() < today.getTime() || app.status === 'completed';
+      if (!app || !app.appointmentDate) {
+        console.warn('Invalid appointment data:', app);
+        return false;
+      }
+      
+      try {
+        const appDate = new Date(app.appointmentDate);
+        appDate.setHours(0, 0, 0, 0);
+        return appDate.getTime() < today.getTime() || app.status === 'completed';
+      } catch (err) {
+        console.error('Error parsing appointment date:', err);
+        return false;
+      }
     }).sort((a, b) => new Date(b.appointmentDate) - new Date(a.appointmentDate));
   };
 
@@ -210,48 +285,48 @@ const DoctorDashboard = () => {
   const renderStatusBadge = (status) => {
     switch (status) {
       case 'pending':
-        return <Badge bg="warning">Pending</Badge>;
+        return <Badge bg="warning" className="status-badge">Pending</Badge>;
       case 'confirmed':
-        return <Badge bg="primary">Confirmed</Badge>;
+        return <Badge bg="primary" className="status-badge">Confirmed</Badge>;
       case 'completed':
-        return <Badge bg="success">Completed</Badge>;
+        return <Badge bg="success" className="status-badge">Completed</Badge>;
       case 'cancelled':
-        return <Badge bg="danger">Cancelled</Badge>;
+        return <Badge bg="danger" className="status-badge">Cancelled</Badge>;
       default:
-        return <Badge bg="secondary">{status}</Badge>;
+        return <Badge bg="secondary" className="status-badge">{status}</Badge>;
     }
   };
 
   const renderAppointmentItem = (appointment, showDate = true) => (
-    <ListGroup.Item key={appointment._id} className="mb-2 border rounded">
-      <div className="d-flex justify-content-between align-items-start">
-        <div>
-          <div className="fw-bold">{appointment.patient.name}</div>
-          <div className="small text-muted">{appointment.patient.phoneNumber}</div>
+    <ListGroup.Item key={appointment._id} className="mb-2 border rounded appointment-item">
+      <div className="d-flex flex-column flex-md-row justify-content-between align-items-start">
+        <div className="mb-2 mb-md-0 w-100">
+          <div className="fw-bold">{appointment.user?.name || 'Unknown Patient'}</div>
+          <div className="small text-muted">{appointment.user?.phoneNumber || 'No phone number'}</div>
           {showDate && (
             <div className="small text-muted">
-              {formatDate(appointment.appointmentDate)} at {appointment.appointmentTime}
+              {formatDate(appointment.appointmentDate)} at {appointment.timeSlot || 'No time specified'}
             </div>
           )}
           {!showDate && (
             <div className="small text-muted">
-              Time: {appointment.appointmentTime}
+              Time: {appointment.timeSlot || 'No time specified'}
             </div>
           )}
           <div className="mt-1">
-            <strong>Reason:</strong> {appointment.reason}
+            <strong>Reason:</strong> {appointment.reason || 'No reason specified'}
           </div>
           <div className="mt-1 d-flex align-items-center">
             <span className="me-2">Status: {renderStatusBadge(appointment.status)}</span>
             {appointment.isPaid && <Badge bg="success" className="ms-2">Paid</Badge>}
           </div>
         </div>
-        <div className="d-flex">
+        <div className="d-flex flex-wrap mt-2 mt-md-0 appointment-buttons-mobile">
           <Button 
             onClick={() => navigate(`/appointments/${appointment._id}`)}
             variant="outline-primary"
             size="sm"
-            className="me-2"
+            className="me-2 mb-1"
           >
             View
           </Button>
@@ -260,7 +335,7 @@ const DoctorDashboard = () => {
               onClick={() => updateAppointmentStatus(appointment._id, 'confirmed')}
               variant="success"
               size="sm"
-              className="me-2"
+              className="me-2 mb-1"
             >
               Confirm
             </Button>
@@ -270,7 +345,7 @@ const DoctorDashboard = () => {
               onClick={() => updateAppointmentStatus(appointment._id, 'completed')}
               variant="primary"
               size="sm"
-              className="me-2"
+              className="me-2 mb-1"
             >
               Complete
             </Button>
@@ -280,6 +355,7 @@ const DoctorDashboard = () => {
               onClick={() => updateAppointmentStatus(appointment._id, 'cancelled')}
               variant="danger"
               size="sm"
+              className="mb-1"
             >
               Cancel
             </Button>
@@ -290,7 +366,7 @@ const DoctorDashboard = () => {
   );
 
   return (
-    <Container className="py-4">
+    <Container className="py-4 doctor-dashboard-container">
       <h1 className="mb-4">Doctor Dashboard</h1>
       
       {loading ? (
@@ -306,7 +382,7 @@ const DoctorDashboard = () => {
           >
             <Tab eventKey="overview" title="Overview">
               <Row>
-                <Col md={4}>
+                <Col xs={12} md={4} className="mb-4">
                   <Card className="mb-4">
                     <Card.Body>
                       <Card.Title>
@@ -367,7 +443,7 @@ const DoctorDashboard = () => {
                   </Card>
                 </Col>
                 
-                <Col md={8}>
+                <Col xs={12} md={8}>
                   {appointmentsLoading ? (
                     <Loader />
                   ) : appointmentsError ? (
@@ -468,7 +544,7 @@ const DoctorDashboard = () => {
                     </Form.Group>
                     
                     <Row>
-                      <Col md={6}>
+                      <Col xs={12} md={6}>
                         <Form.Group className="mb-3" controlId="experience">
                           <Form.Label>Years of Experience</Form.Label>
                           <Form.Control
@@ -480,7 +556,7 @@ const DoctorDashboard = () => {
                           />
                         </Form.Group>
                       </Col>
-                      <Col md={6}>
+                      <Col xs={12} md={6}>
                         <Form.Group className="mb-3" controlId="fees">
                           <Form.Label>Consultation Fee (₹)</Form.Label>
                           <Form.Control
@@ -523,7 +599,7 @@ const DoctorDashboard = () => {
                         <Card.Body>
                           <Card.Title>{timing.day}</Card.Title>
                           <Row>
-                            <Col xs={4}>
+                            <Col xs={12} sm={4} className="mb-2 mb-sm-0">
                               <Form.Group>
                                 <Form.Label>Start Time</Form.Label>
                                 <Form.Control
@@ -534,7 +610,7 @@ const DoctorDashboard = () => {
                                 />
                               </Form.Group>
                             </Col>
-                            <Col xs={4}>
+                            <Col xs={12} sm={4} className="mb-2 mb-sm-0">
                               <Form.Group>
                                 <Form.Label>End Time</Form.Label>
                                 <Form.Control
@@ -545,14 +621,14 @@ const DoctorDashboard = () => {
                                 />
                               </Form.Group>
                             </Col>
-                            <Col xs={4} className="d-flex align-items-center justify-content-center">
+                            <Col xs={12} sm={4} className="d-flex align-items-center justify-content-start justify-content-sm-center">
                               <Form.Check
                                 type="switch"
                                 id={`availability-switch-${index}`}
                                 label="Available"
                                 checked={timing.isAvailable}
                                 onChange={() => handleTimingChange(index, 'isAvailable')}
-                                className="mt-4"
+                                className="mt-2 mt-sm-4"
                               />
                             </Col>
                           </Row>
@@ -579,7 +655,7 @@ const DoctorDashboard = () => {
               ) : appointmentsError ? (
                 <Message variant="danger">{appointmentsError}</Message>
               ) : (
-                <Tabs defaultActiveKey="upcoming" id="appointments-tabs" className="mb-3">
+                <Tabs defaultActiveKey="upcoming" id="appointments-tabs" className="mb-3 flex-nowrap overflow-auto appointment-tabs">
                   <Tab eventKey="upcoming" title="Upcoming">
                     {getUpcomingAppointments().length === 0 ? (
                       <Message>No upcoming appointments</Message>

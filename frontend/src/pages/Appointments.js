@@ -27,6 +27,7 @@ const Appointments = () => {
   const fetchAppointments = async (status = '', date = '') => {
     try {
       setLoading(true);
+      setAppointments([]);
       
       let endpoint = '/appointments';
       let params = [];
@@ -43,15 +44,27 @@ const Appointments = () => {
         endpoint += `?${params.join('&')}`;
       }
       
-      const { data } = await api.get(endpoint);
-      setAppointments(data.data);
-      setLoading(false);
+      const response = await api.get(endpoint);
+      console.log('Appointments response:', response);
+      
+      if (response.data && Array.isArray(response.data)) {
+        setAppointments(response.data);
+      } else if (response.data && Array.isArray(response.data.data)) {
+        setAppointments(response.data.data);
+      } else {
+        console.error('Unexpected response format:', response.data);
+        setAppointments([]);
+        setError('Received unexpected data format from server');
+      }
     } catch (err) {
+      console.error('Error fetching appointments:', err);
       setError(
         err.response && err.response.data.message
           ? err.response.data.message
           : 'Error fetching appointments'
       );
+      setAppointments([]);
+    } finally {
       setLoading(false);
     }
   };
@@ -135,6 +148,8 @@ const Appointments = () => {
           
           {loading ? (
             <Loader />
+          ) : !Array.isArray(appointments) ? (
+            <Message variant="warning">Unable to load appointments</Message>
           ) : appointments.length === 0 ? (
             <Message>No appointments found</Message>
           ) : (
@@ -143,7 +158,7 @@ const Appointments = () => {
                 <Col key={appointment._id} md={6} lg={4} className="mb-4">
                   <AppointmentItem 
                     appointment={appointment} 
-                    showPatient={userInfo && userInfo.role === 'doctor'}
+                    showPatient={userInfo && userInfo.isDoctor}
                   />
                 </Col>
               ))}

@@ -1,21 +1,20 @@
 const express = require('express');
 const router = express.Router();
-const { 
+const {
   getDoctors,
-  getDoctor,
+  getDoctorById,
   createDoctorProfile,
   updateDoctorProfile,
-  deleteDoctor
 } = require('../controllers/doctorController');
-const { protect, authorize } = require('../middlewares/auth');
+const { protect, admin, doctor } = require('../middleware/authMiddleware');
 
-// Public routes
-router.get('/', getDoctors);
-router.get('/:id', getDoctor);
+// @route   GET /api/doctors
+router.route('/').get(getDoctors).post(protect, admin, createDoctorProfile);
 
-// Protected routes
-router.post('/', protect, authorize('doctor'), createDoctorProfile);
-router.put('/:id', protect, authorize('doctor', 'admin'), updateDoctorProfile);
-router.delete('/:id', protect, authorize('admin'), deleteDoctor);
+// @route   GET & PUT /api/doctors/:id
+router
+  .route('/:id')
+  .get(getDoctorById)
+  .put(protect, updateDoctorProfile);
 
 module.exports = router; 

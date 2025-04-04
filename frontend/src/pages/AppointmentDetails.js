@@ -27,22 +27,33 @@ const AppointmentDetails = () => {
       
       const { data } = await api.get(`/appointments/${id}`);
       
-      if (!data || !data.data) {
-        setError('No appointment data received from server');
+      if (!data) {
+        setError('No data received from server');
         setLoading(false);
         return;
       }
       
+      // Extract appointment data from response format
+      const appointment = data.data || data;
+      
       // Validate that we have the expected data structure
-      const appointment = data.data;
-      if (!appointment.doctor || !appointment.patient) {
-        console.warn('Appointment data is missing doctor or patient information:', appointment);
+      if (!appointment.doctor || !appointment.user) {
+        console.warn('Appointment data is missing doctor or user information:', appointment);
       }
       
-      setAppointment(appointment);
+      // Assign user as patient for easier reference
+      const enhancedAppointment = {
+        ...appointment,
+        patient: appointment.user
+      };
+      
+      setAppointment(enhancedAppointment);
       
       // Update page title with appointment information
-      if (appointment.doctor && appointment.doctor.user) {
+      if (appointment.doctor && appointment.doctor.name) {
+        const formattedDate = new Date(appointment.appointmentDate).toLocaleDateString();
+        document.title = `Appointment with Dr. ${appointment.doctor.name} on ${formattedDate} | MedConnect`;
+      } else if (appointment.doctor && appointment.doctor.user && appointment.doctor.user.name) {
         const formattedDate = new Date(appointment.appointmentDate).toLocaleDateString();
         document.title = `Appointment with Dr. ${appointment.doctor.user.name} on ${formattedDate} | MedConnect`;
       } else {
@@ -173,20 +184,20 @@ const AppointmentDetails = () => {
                 
                 <Col md={6}>
                   <h5>Doctor Information</h5>
-                  {appointment.doctor && appointment.doctor.user ? (
+                  {appointment.doctor ? (
                     <>
                       <p className="mb-2">
                         <FaUserMd className="me-2" />
-                        <strong>Name:</strong> {appointment.doctor.user.name}
+                        <strong>Name:</strong> {appointment.doctor.name || (appointment.doctor.user && appointment.doctor.user.name) || 'Doctor'}
                       </p>
                       <p className="mb-2">
-                        <strong>Specialization:</strong> {appointment.doctor.specialization}
+                        <strong>Specialization:</strong> {appointment.doctor.specialization || 'Not specified'}
                       </p>
                       <p className="mb-2">
-                        <strong>Phone:</strong> {appointment.doctor.user.phoneNumber}
+                        <strong>Phone:</strong> {appointment.doctor.phone || (appointment.doctor.user && appointment.doctor.user.phoneNumber) || 'Not available'}
                       </p>
                       <p className="mb-2">
-                        <strong>Email:</strong> {appointment.doctor.user.email}
+                        <strong>Email:</strong> {appointment.doctor.email || (appointment.doctor.user && appointment.doctor.user.email) || 'Not available'}
                       </p>
                     </>
                   ) : (

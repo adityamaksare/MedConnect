@@ -1,213 +1,156 @@
-const Doctor = require('../models/Doctor');
-const User = require('../models/User');
+const Doctor = require('../models/doctorModel');
+const User = require('../models/userModel');
 
 // @desc    Get all doctors
 // @route   GET /api/doctors
 // @access  Public
-exports.getDoctors = async (req, res) => {
+const getDoctors = async (req, res) => {
   try {
-    // Implement pagination
-    const page = parseInt(req.query.page, 10) || 1;
-    const limit = parseInt(req.query.limit, 10) || 10;
-    const startIndex = (page - 1) * limit;
+    const { specialization, search, limit = 20 } = req.query;
     
     // Build filter object
     const filter = {};
     
-    // Filter by specialization if provided
-    if (req.query.specialization) {
-      filter.specialization = req.query.specialization;
-    }
-
-    // If search query is provided, find doctors whose name matches the search query
-    let doctors = [];
-    let total = 0;
-    
-    if (req.query.search) {
-      // First, find users (doctors) whose name matches the search query
-      const users = await User.find({ 
-        name: { $regex: req.query.search, $options: 'i' },
-        role: 'doctor'
-      });
-      
-      // Get the IDs of these users
-      const userIds = users.map(user => user._id);
-      
-      // Add user filter to our filter object
-      if (userIds.length > 0) {
-        filter.user = { $in: userIds };
-      } else {
-        // If no users found matching search, return empty results
-        return res.json({
-          success: true,
-          count: 0,
-          total: 0,
-          pages: 0,
-          currentPage: page,
-          data: []
-        });
-      }
+    // Add specialization filter if provided
+    if (specialization) {
+      filter.specialization = specialization;
     }
     
-    // Execute the query
-    doctors = await Doctor.find(filter)
-      .populate({
-        path: 'user',
-        select: 'name email phoneNumber'
-      })
-      .skip(startIndex)
-      .limit(limit);
+    // Add search filter if provided
+    if (search) {
+      filter.name = { $regex: search, $options: 'i' };
+    }
     
-    total = await Doctor.countDocuments(filter);
-
-    res.json({
-      success: true,
-      count: doctors.length,
-      total,
-      pages: Math.ceil(total / limit),
-      currentPage: page,
-      data: doctors
-    });
+    // Log the filter to help with debugging
+    console.log('Doctor filter:', filter);
+    
+    // Execute query with filters
+    const doctors = await Doctor.find(filter)
+      .populate('user', 'name email')
+      .limit(parseInt(limit));
+      
+    console.log(`Found ${doctors.length} doctors matching criteria`);
+    
+    res.json(doctors);
   } catch (error) {
-    console.error('Doctor search error:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message
+    console.error('Error in getDoctors:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || 'Server Error' 
     });
   }
 };
 
-// @desc    Get single doctor
+// @desc    Get doctor by ID
 // @route   GET /api/doctors/:id
 // @access  Public
-exports.getDoctor = async (req, res) => {
+const getDoctorById = async (req, res) => {
   try {
-    const doctor = await Doctor.findById(req.params.id).populate({
-      path: 'user',
-      select: 'name email phoneNumber'
-    });
+    console.log('Fetching doctor with ID:', req.params.id);
+    
+    const doctor = await Doctor.findById(req.params.id).populate(
+      'user',
+      'name email'
+    );
 
-    if (!doctor) {
+    if (doctor) {
+      console.log('Doctor found:', doctor.name);
+      res.json(doctor);
+    } else {
+      console.log('No doctor found with ID:', req.params.id);
       return res.status(404).json({
         success: false,
         message: 'Doctor not found'
       });
     }
-
-    res.json({
-      success: true,
-      data: doctor
-    });
   } catch (error) {
-    res.status(500).json({
+    console.error('Error fetching doctor by ID:', error);
+    return res.status(500).json({
       success: false,
-      message: error.message
+      message: error.message || 'Server error while fetching doctor'
     });
   }
 };
 
 // @desc    Create doctor profile
 // @route   POST /api/doctors
-// @access  Private/Doctor
-exports.createDoctorProfile = async (req, res) => {
-  try {
-    // Check if doctor profile already exists for this user
-    const existingDoctor = await Doctor.findOne({ user: req.user._id });
+// @access  Private/Admin
+const createDoctorProfile = async (req, res) => {
+  const {
+    name,
+    specialization,
+    experience,
+    fees,
+    phone,
+    timings,
+    availableDays,
+    bio,
+    image,
+  } = req.body;
 
-    if (existingDoctor) {
-      return res.status(400).json({
-        success: false,
-        message: 'Doctor profile already exists for this user'
-      });
-    }
+  // Create doctor user
+  const user = await User.create({
+    name,
+    email: req.body.email,
+    password: req.body.password,
+    isDoctor: true,
+  });
 
+  if (user) {
     // Create doctor profile
     const doctor = await Doctor.create({
-      user: req.user._id,
-      specialization: req.body.specialization,
-      experience: req.body.experience,
-      fees: req.body.fees,
-      timings: req.body.timings,
-      address: req.body.address,
-      bio: req.body.bio
+      user: user._id,
+      name,
+      specialization,
+      experience,
+      fees,
+      phone,
+      timings,
+      availableDays,
+      bio,
+      image,
     });
 
-    res.status(201).json({
-      success: true,
-      data: doctor
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
+    if (doctor) {
+      res.status(201).json(doctor);
+    } else {
+      res.status(400);
+      throw new Error('Invalid doctor data');
+    }
+  } else {
+    res.status(400);
+    throw new Error('Invalid user data');
   }
 };
 
 // @desc    Update doctor profile
 // @route   PUT /api/doctors/:id
-// @access  Private/Doctor
-exports.updateDoctorProfile = async (req, res) => {
-  try {
-    let doctor = await Doctor.findById(req.params.id);
+// @access  Private/Admin/Doctor
+const updateDoctorProfile = async (req, res) => {
+  const doctor = await Doctor.findById(req.params.id);
 
-    if (!doctor) {
-      return res.status(404).json({
-        success: false,
-        message: 'Doctor not found'
-      });
-    }
+  if (doctor) {
+    doctor.name = req.body.name || doctor.name;
+    doctor.specialization = req.body.specialization || doctor.specialization;
+    doctor.experience = req.body.experience || doctor.experience;
+    doctor.fees = req.body.fees || doctor.fees;
+    doctor.phone = req.body.phone || doctor.phone;
+    doctor.timings = req.body.timings || doctor.timings;
+    doctor.availableDays = req.body.availableDays || doctor.availableDays;
+    doctor.bio = req.body.bio || doctor.bio;
+    doctor.image = req.body.image || doctor.image;
 
-    // Make sure the logged in user is the doctor owner
-    if (doctor.user.toString() !== req.user._id.toString() && req.user.role !== 'admin') {
-      return res.status(401).json({
-        success: false,
-        message: 'Not authorized to update this profile'
-      });
-    }
-
-    // Update doctor profile
-    doctor = await Doctor.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true
-    });
-
-    res.json({
-      success: true,
-      data: doctor
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
+    const updatedDoctor = await doctor.save();
+    res.json(updatedDoctor);
+  } else {
+    res.status(404);
+    throw new Error('Doctor not found');
   }
 };
 
-// @desc    Delete doctor profile
-// @route   DELETE /api/doctors/:id
-// @access  Private/Admin
-exports.deleteDoctor = async (req, res) => {
-  try {
-    const doctor = await Doctor.findById(req.params.id);
-
-    if (!doctor) {
-      return res.status(404).json({
-        success: false,
-        message: 'Doctor not found'
-      });
-    }
-
-    await doctor.deleteOne();
-
-    res.json({
-      success: true,
-      data: {}
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: error.message
-    });
-  }
+module.exports = {
+  getDoctors,
+  getDoctorById,
+  createDoctorProfile,
+  updateDoctorProfile,
 }; 

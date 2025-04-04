@@ -27,23 +27,44 @@ const Register = () => {
     }
     
     try {
-      console.log("Attempting registration with:", { name, email, password, phoneNumber, role });
-      const result = await register({ name, email, password, phoneNumber, role });
+      // Convert role to isDoctor flag
+      const isDoctor = role === 'doctor';
+      
+      console.log("Attempting registration with:", { 
+        name, 
+        email, 
+        password: password ? "provided" : "not provided", 
+        phoneNumber, 
+        isDoctor 
+      });
+      
+      const result = await register({ 
+        name, 
+        email, 
+        password, 
+        phoneNumber, 
+        isDoctor 
+      });
+      
       console.log("Registration successful:", result);
       
       // Show success alert
       success('Account created successfully! Welcome to MedConnect.');
       
       // Redirect based on user role
-      if (result.role === 'doctor') {
+      if (result.isDoctor) {
         navigate('/doctor-dashboard');
-      } else if (result.role === 'patient') {
-        navigate('/patient-dashboard');
       } else {
-        navigate('/');
+        navigate('/patient-dashboard');
       }
     } catch (err) {
       console.error("Registration error in component:", err);
+      // Set form error message
+      const errorMessage = err.response && err.response.data && err.response.data.message
+        ? err.response.data.message
+        : 'Registration failed. Please try again.';
+      
+      setFormError(errorMessage);
       // Error is handled in the AuthContext
     }
   };
