@@ -3,6 +3,7 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
 const { notFound, errorHandler } = require('./middleware/errorMiddleware');
+const path = require('path');
 
 // Import Routes
 const userRoutes = require('./routes/users');
@@ -26,7 +27,7 @@ const app = express();
 app.use(cors({
   origin: [
     'http://localhost:3000',
-    'http://localhost:5000', 
+    'http://localhost:5000',
     'http://localhost:3001',
     // Allow all IP addresses with these ports
     /^http:\/\/\d+\.\d+\.\d+\.\d+:3000$/,
@@ -41,7 +42,7 @@ app.use(express.json());
 
 // Root test endpoint
 app.get('/api/test', (req, res) => {
-  res.json({ 
+  res.json({
     message: 'API is running',
     timestamp: new Date().toISOString(),
     env: process.env.NODE_ENV || 'development'
@@ -53,10 +54,21 @@ app.use('/api/users', userRoutes);
 app.use('/api/doctors', doctorRoutes);
 app.use('/api/appointments', appointmentRoutes);
 
-// Home route
-app.get('/', (req, res) => {
-  res.json({ message: 'Doctor Appointment API is running' });
-});
+// Serve static assets in production
+if (process.env.NODE_ENV === 'production') {
+  // Set static folder
+  app.use(express.static(path.join(__dirname, '../frontend/build')));
+
+  // Any route that is not api will be redirected to index.html
+  app.get('*', (req, res) => {
+    res.sendFile(path.resolve(__dirname, '../frontend/build', 'index.html'));
+  });
+} else {
+  // Home route for development
+  app.get('/', (req, res) => {
+    res.json({ message: 'Doctor Appointment API is running' });
+  });
+}
 
 // Test MongoDB connection route
 app.get('/api/test-db', (req, res) => {

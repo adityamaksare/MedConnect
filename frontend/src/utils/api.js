@@ -1,20 +1,19 @@
 import axios from 'axios';
 
-// Get the hostname - works on both PC and mobile when on same network
-const hostname = window.location.hostname;
-
-// Backup API URL in case automatic detection fails
-const FALLBACK_API_URL = 'http://localhost:5001/api';
-
 // Determine the best API URL to use
 const determineApiUrl = () => {
-  // Try to use the current hostname with port 5001
-  const autoUrl = `http://${hostname}:5001/api`;
-  
-  // Log which URL we're using
-  console.log(`[API] Using API URL: ${autoUrl} (hostname: ${hostname})`);
-  
-  return autoUrl;
+  // In production, use relative URL (will be served from the same domain)
+  // In development, use the hostname with port 5001
+  if (process.env.NODE_ENV === 'production') {
+    return '/api';
+  } else {
+    // Get the hostname - works on both PC and mobile when on same network
+    const hostname = window.location.hostname;
+    // Use the current hostname with port 5001
+    const devUrl = `http://${hostname}:5001/api`;
+    console.log(`[API] Using development API URL: ${devUrl}`);
+    return devUrl;
+  }
 };
 
 // Create an axios instance with default config
@@ -46,7 +45,7 @@ api.interceptors.request.use(
 api.interceptors.request.use(
   (config) => {
     debug('Request:', { url: config.url, method: config.method });
-    
+
     const userInfoStr = localStorage.getItem('userInfo');
     if (userInfoStr) {
       try {
@@ -74,7 +73,7 @@ api.interceptors.request.use(
 // Response interceptor - handle common errors
 api.interceptors.response.use(
   (response) => {
-    debug('Response success:', { 
+    debug('Response success:', {
       url: response.config.url,
       status: response.status,
       data: response.data
@@ -83,53 +82,53 @@ api.interceptors.response.use(
   },
   (error) => {
     const { config, response } = error;
-    
-    debug('Response error:', { 
+
+    debug('Response error:', {
       url: config?.url,
       message: error.message,
       response: response?.data,
       status: response?.status
     });
-    
+
     // Retry logic for network errors or 5xx server errors
     // Don't retry for 4xx client errors, POST operations, or if we've already retried 3 times
     const shouldRetry = (
-      (!response || response.status >= 500) && 
-      config && 
+      (!response || response.status >= 500) &&
+      config &&
       config.retryCount < 3 &&
       config.method !== 'post'
     );
-    
+
     if (shouldRetry) {
       // Increment the retry count
       config.retryCount = config.retryCount + 1;
-      
+
       // Exponential backoff delay: 1s, 2s, 4s
       const delay = 1000 * Math.pow(2, config.retryCount - 1);
       console.log(`Retrying request to ${config.url} (attempt ${config.retryCount}/3) after ${delay}ms`);
-      
+
       // Return a promise that resolves after the delay and retries the request
       return new Promise(resolve => {
         setTimeout(() => resolve(api(config)), delay);
       });
     }
-    
+
     // Handle authentication errors (401)
     if (response && response.status === 401) {
       console.log('Authentication error detected, clearing user session');
       localStorage.removeItem('userInfo');
-      
+
       // Only redirect if not already on login page to avoid redirect loops
       if (!window.location.pathname.includes('/login')) {
         window.location.href = '/login';
       }
     }
-    
+
     // Handle server errors (500)
     if (response && response.status >= 500) {
       console.error('Server error:', response.data);
     }
-    
+
     return Promise.reject(error);
   }
 );
