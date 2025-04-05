@@ -7,7 +7,7 @@ const hostname = window.location.hostname;
 const FALLBACK_API_URL = 'http://localhost:5001/api';
 
 // Production API URL
-const PRODUCTION_API_URL = 'https://doctor-appointment-backend.onrender.com/api';
+const PRODUCTION_API_URL = 'https://medconnect-12ea.onrender.com/api';
 
 // Determine the best API URL to use
 const determineApiUrl = () => {

@@ -12,8 +12,8 @@ import { AuthContext } from '../context/AuthContext';
 // Animation variants
 const fadeInUp = {
   hidden: { opacity: 0, y: 30 },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     y: 0,
     transition: { duration: 0.6, ease: "easeOut" }
   }
@@ -38,7 +38,7 @@ const Home = () => {
   useEffect(() => {
     // Set home page title
     document.title = 'MedConnect | Your Health, Our Priority';
-    
+
     const fetchTopDoctors = async () => {
       try {
         setLoading(true);
@@ -93,12 +93,12 @@ const Home = () => {
   return (
     <>
       {/* Hero Section */}
-      <motion.section 
-        className="hero py-5" 
+      <motion.section
+        className="hero py-5"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.8 }}
-        style={{ 
+        style={{
           background: 'linear-gradient(135deg, #0a6cb9 0%, #4F9DF9 100%)',
           borderRadius: '20px',
           margin: '20px 0',
@@ -109,7 +109,7 @@ const Home = () => {
           <Row className="align-items-center">
             <Col lg={6} className="text-white mb-5 mb-lg-0">
               <AnimatedHeadline />
-              <motion.p 
+              <motion.p
                 className="lead mb-4 text-white"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -117,7 +117,7 @@ const Home = () => {
               >
                 Find the right doctor, book an appointment, and get the care you deserve. MedConnect makes healthcare accessible and convenient.
               </motion.p>
-              <motion.div 
+              <motion.div
                 className="d-flex flex-wrap gap-3"
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -134,15 +134,15 @@ const Home = () => {
               </motion.div>
             </Col>
             <Col lg={6}>
-              <motion.img 
-                src="https://img.freepik.com/free-vector/doctors-concept-illustration_114360-1515.jpg" 
-                alt="Healthcare Professionals" 
+              <motion.img
+                src="/images/healthcare.jpg"
+                alt="Healthcare Professionals"
                 className="img-fluid shadow-lg"
                 initial={{ opacity: 0, rotateY: -15, scale: 0.95 }}
                 animate={{ opacity: 1, rotateY: -5, scale: 1 }}
                 transition={{ duration: 0.8, ease: "easeOut" }}
                 whileHover={{ rotateY: 0, scale: 1.02 }}
-                style={{ 
+                style={{
                   maxHeight: '400px',
                   borderRadius: '15px',
                   transition: 'transform 0.5s ease'
@@ -156,7 +156,7 @@ const Home = () => {
       {/* Features Section */}
       <section className="py-5">
         <Container>
-          <motion.h2 
+          <motion.h2
             className="text-center mb-5 fw-bold"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -185,7 +185,7 @@ const Home = () => {
                   >
                     <Card className="h-100 text-center py-4 border-0 shadow-sm">
                       <div className="text-center mb-3">
-                        <motion.span 
+                        <motion.span
                           style={{ fontSize: '3rem', color: 'var(--primary-blue)' }}
                           whileHover={{ scale: 1.1, rotate: 5 }}
                           transition={{ type: "spring", stiffness: 300 }}
@@ -211,7 +211,7 @@ const Home = () => {
       {/* Featured Doctors Section */}
       <section className="py-5 bg-light">
         <Container>
-          <motion.h2 
+          <motion.h2
             className="text-center mb-5 fw-bold"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -220,7 +220,7 @@ const Home = () => {
           >
             Top Doctors
           </motion.h2>
-          
+
           {loading ? (
             <Loader />
           ) : error ? (
@@ -266,10 +266,10 @@ const Home = () => {
                               <small className="text-muted">{doctor.experience || 0} years of experience</small>
                             </Card.Text>
                             <motion.div whileHover={{ scale: 1.05 }}>
-                              <Button 
-                                as={Link} 
-                                to={`/doctors/${doctor._id}`} 
-                                variant="outline-primary" 
+                              <Button
+                                as={Link}
+                                to={`/doctors/${doctor._id}`}
+                                variant="outline-primary"
                                 size="sm"
                               >
                                 View Profile
@@ -291,8 +291,8 @@ const Home = () => {
               </Row>
             </motion.div>
           )}
-          
-          <motion.div 
+
+          <motion.div
             className="text-center mt-4"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -326,10 +326,10 @@ const Home = () => {
                     <Card.Text>
                       {spec.description}
                     </Card.Text>
-                    <Button 
-                      as={Link} 
-                      to={`/doctors?specialization=${spec.name}`} 
-                      variant="outline-primary" 
+                    <Button
+                      as={Link}
+                      to={`/doctors?specialization=${spec.name}`}
+                      variant="outline-primary"
                       size="sm"
                       className="mt-2"
                     >
@@ -344,7 +344,7 @@ const Home = () => {
       </section>
 
       {/* Testimonials Section */}
-      <section className="py-5" style={{ 
+      <section className="py-5" style={{
         background: '#ffffff',
         borderRadius: '20px',
         margin: '20px 0',
@@ -367,7 +367,7 @@ const Home = () => {
                     src={testimonial.image}
                     alt={testimonial.name}
                     className="rounded-circle mb-4 border testimonial-image"
-                    style={{ 
+                    style={{
                       borderColor: '#4F9DF9',
                       borderWidth: '3px',
                       boxShadow: '0 5px 15px rgba(79, 157, 249, 0.2)'
