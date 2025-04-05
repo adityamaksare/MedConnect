@@ -133,6 +133,24 @@ app.use('/api/users', userRoutes);
 app.use('/api/doctors', doctorRoutes);
 app.use('/api/appointments', appointmentRoutes);
 
+// Redirect singular doctor endpoint to plural form
+app.get('/api/doctor', (req, res) => {
+  console.log('Redirecting from singular /api/doctor to plural /api/doctors');
+  res.redirect('/api/doctors' + (req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : ''));
+});
+
+// Redirect singular user endpoint to plural form
+app.get('/api/user', (req, res) => {
+  console.log('Redirecting from singular /api/user to plural /api/users');
+  res.redirect('/api/users' + (req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : ''));
+});
+
+// Redirect singular appointment endpoint to plural form
+app.get('/api/appointment', (req, res) => {
+  console.log('Redirecting from singular /api/appointment to plural /api/appointments');
+  res.redirect('/api/appointments' + (req.url.includes('?') ? req.url.substring(req.url.indexOf('?')) : ''));
+});
+
 // Test MongoDB connection route
 app.get('/api/test-db', async (req, res) => {
   try {
