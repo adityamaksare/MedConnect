@@ -30,8 +30,8 @@ const api = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  // Enable cross-site cookies
-  withCredentials: true,
+  // Disable credentials since we're using wildcard CORS origin on the backend
+  withCredentials: false,
 });
 
 // Add debugging function
