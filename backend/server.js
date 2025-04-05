@@ -46,6 +46,12 @@ app.use(cors({
     // Allow requests with no origin (like mobile apps, curl requests)
     if (!origin) return callback(null, true);
 
+    // In development mode, allow all origins for easier testing
+    if (process.env.NODE_ENV !== 'production') {
+      console.log(`CORS: Development mode - allowing all origins`);
+      return callback(null, true);
+    }
+
     const allowedOrigins = [
       // Local development
       'http://localhost:3000',
@@ -60,8 +66,15 @@ app.use(cors({
       'https://medconnect-frontend.onrender.com',
       'https://medconnect.onrender.com',
       // The actual frontend URL
-      'https://medconnect-frontend-1.onrender.com'
+      'https://medconnect-frontend-1.onrender.com',
+      // New frontend URL
+      'https://medconnect-frontend-6oln.onrender.com',
+      // Fallback - allow all render.com subdomains
+      /^https:\/\/.*\.onrender\.com$/
     ];
+
+    // For debugging
+    console.log(`CORS check for origin: ${origin}`);
 
     // Check if the origin is in the allowed list
     let corsOptions;
@@ -75,6 +88,7 @@ app.use(cors({
 
     if (isAllowed) {
       corsOptions = { origin: true }; // reflect (enable) the requested origin in the CORS response
+      console.log(`CORS allowed for origin: ${origin}`);
     } else {
       corsOptions = { origin: false }; // disable CORS for this request
       console.log(`CORS blocked for origin: ${origin}`);
