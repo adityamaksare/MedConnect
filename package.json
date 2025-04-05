@@ -25,10 +25,7 @@
     "client": "cd frontend && npm start",
     "install-all": "npm install && cd backend && npm install && cd ../frontend && npm install",
     "seed": "cd backend && node seed.js",
-    "build": "cd frontend && npm run build",
-    "deploy": "npm run build && npm run deploy:backend",
-    "deploy:backend": "cd backend && npm start",
-    "heroku-postbuild": "NPM_CONFIG_PRODUCTION=false npm install && npm run install-all && npm run build",
+    "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },

@@ -32,7 +32,10 @@ app.use(cors({
     // Allow all IP addresses with these ports
     /^http:\/\/\d+\.\d+\.\d+\.\d+:3000$/,
     /^http:\/\/\d+\.\d+\.\d+\.\d+:3001$/,
-    /^http:\/\/\d+\.\d+\.\d+\.\d+:5000$/
+    /^http:\/\/\d+\.\d+\.\d+\.\d+:5000$/,
+    // Add production URLs - update these with your actual deployed frontend URL
+    'https://doctor-appointment-frontend.onrender.com',
+    'https://medconnect.onrender.com'
   ],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -54,17 +57,18 @@ app.use('/api/users', userRoutes);
 app.use('/api/doctors', doctorRoutes);
 app.use('/api/appointments', appointmentRoutes);
 
-// Serve static assets in production
+// For production - Serve frontend build if in production
 if (process.env.NODE_ENV === 'production') {
   // Set static folder
+  const __dirname = path.resolve();
   app.use(express.static(path.join(__dirname, '../frontend/build')));
 
   // Any route that is not api will be redirected to index.html
-  app.get('*', (req, res) => {
-    res.sendFile(path.resolve(__dirname, '../frontend/build', 'index.html'));
-  });
+  app.get('*', (req, res) =>
+    res.sendFile(path.resolve(__dirname, '../frontend/build', 'index.html'))
+  );
 } else {
-  // Home route for development
+  // Home route
   app.get('/', (req, res) => {
     res.json({ message: 'Doctor Appointment API is running' });
   });

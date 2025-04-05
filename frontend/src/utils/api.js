@@ -1,19 +1,26 @@
 import axios from 'axios';
 
+// Get the hostname - works on both PC and mobile when on same network
+const hostname = window.location.hostname;
+
+// Backup API URL in case automatic detection fails
+const FALLBACK_API_URL = 'http://localhost:5001/api';
+
+// Production API URL
+const PRODUCTION_API_URL = 'https://doctor-appointment-backend.onrender.com/api';
+
 // Determine the best API URL to use
 const determineApiUrl = () => {
-  // In production, use relative URL (will be served from the same domain)
-  // In development, use the hostname with port 5001
-  if (process.env.NODE_ENV === 'production') {
-    return '/api';
-  } else {
-    // Get the hostname - works on both PC and mobile when on same network
-    const hostname = window.location.hostname;
-    // Use the current hostname with port 5001
-    const devUrl = `http://${hostname}:5001/api`;
-    console.log(`[API] Using development API URL: ${devUrl}`);
-    return devUrl;
+  // If in production (on a deployed host), use the production API URL
+  if (hostname !== 'localhost' && !hostname.match(/^\d+\.\d+\.\d+\.\d+$/)) {
+    console.log(`[API] Using production API URL: ${PRODUCTION_API_URL}`);
+    return PRODUCTION_API_URL;
   }
+
+  // For local development, use local backend
+  const localUrl = `http://${hostname}:5001/api`;
+  console.log(`[API] Using local API URL: ${localUrl} (hostname: ${hostname})`);
+  return localUrl;
 };
 
 // Create an axios instance with default config
