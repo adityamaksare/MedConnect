@@ -80,10 +80,10 @@ app.use(notFound);
 app.use(errorHandler);
 
 // Port
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 5001;
 
 // Start server
-app.listen(PORT, '0.0.0.0', () => {
+app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log(`Access from other devices at http://YOUR_IP_ADDRESS:${PORT}`);
+  console.log(`Access your API at http://localhost:${PORT}`);
 }); 
