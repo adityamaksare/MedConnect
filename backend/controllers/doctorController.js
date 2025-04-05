@@ -1,5 +1,6 @@
 const Doctor = require('../models/doctorModel');
 const User = require('../models/userModel');
+const mongoose = require('mongoose');
 
 // @desc    Get all doctors
 // @route   GET /api/doctors
@@ -7,36 +8,54 @@ const User = require('../models/userModel');
 const getDoctors = async (req, res) => {
   try {
     const { specialization, search, limit = 20 } = req.query;
-    
+
+    console.log('GET /api/doctors request received');
+    console.log('Query params:', { specialization, search, limit });
+
     // Build filter object
     const filter = {};
-    
+
     // Add specialization filter if provided
     if (specialization) {
       filter.specialization = specialization;
     }
-    
+
     // Add search filter if provided
     if (search) {
       filter.name = { $regex: search, $options: 'i' };
     }
-    
+
     // Log the filter to help with debugging
     console.log('Doctor filter:', filter);
-    
+
+    // Check database connection before attempting query
+    if (mongoose.connection.readyState !== 1) {
+      console.error('MongoDB not connected, connection state:', mongoose.connection.readyState);
+      return res.status(500).json({
+        success: false,
+        message: 'Database connection issue, please try again later',
+        readyState: mongoose.connection.readyState
+      });
+    }
+
     // Execute query with filters
     const doctors = await Doctor.find(filter)
       .populate('user', 'name email')
       .limit(parseInt(limit));
-      
+
     console.log(`Found ${doctors.length} doctors matching criteria`);
-    
-    res.json(doctors);
+
+    // Success response
+    return res.status(200).json(doctors);
   } catch (error) {
     console.error('Error in getDoctors:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: error.message || 'Server Error' 
+
+    // Detailed error response
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Server Error',
+      stack: process.env.NODE_ENV === 'production' ? null : error.stack,
+      error: error.toString()
     });
   }
 };
@@ -47,7 +66,7 @@ const getDoctors = async (req, res) => {
 const getDoctorById = async (req, res) => {
   try {
     console.log('Fetching doctor with ID:', req.params.id);
-    
+
     const doctor = await Doctor.findById(req.params.id).populate(
       'user',
       'name email'
