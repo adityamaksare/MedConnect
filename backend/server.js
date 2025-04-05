@@ -40,62 +40,15 @@ connectDB()
 // Create Express app
 const app = express();
 
-// Middleware
+// Add logging middleware
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+});
+
+// Middleware - Simplified CORS configuration to debug the issue
 app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like mobile apps, curl requests)
-    if (!origin) return callback(null, true);
-
-    // In development mode, allow all origins for easier testing
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(`CORS: Development mode - allowing all origins`);
-      return callback(null, true);
-    }
-
-    const allowedOrigins = [
-      // Local development
-      'http://localhost:3000',
-      'http://localhost:5000',
-      'http://localhost:3001',
-      // IP-based local development
-      /^http:\/\/\d+\.\d+\.\d+\.\d+:3000$/,
-      /^http:\/\/\d+\.\d+\.\d+\.\d+:3001$/,
-      /^http:\/\/\d+\.\d+\.\d+\.\d+:5000$/,
-      // Production URLs
-      'https://doctor-appointment-frontend.onrender.com',
-      'https://medconnect-frontend.onrender.com',
-      'https://medconnect.onrender.com',
-      // The actual frontend URL
-      'https://medconnect-frontend-1.onrender.com',
-      // New frontend URL
-      'https://medconnect-frontend-6oln.onrender.com',
-      // Fallback - allow all render.com subdomains
-      /^https:\/\/.*\.onrender\.com$/
-    ];
-
-    // For debugging
-    console.log(`CORS check for origin: ${origin}`);
-
-    // Check if the origin is in the allowed list
-    let corsOptions;
-    const isAllowed = allowedOrigins.some(allowedOrigin => {
-      if (allowedOrigin instanceof RegExp) {
-        return allowedOrigin.test(origin);
-      } else {
-        return allowedOrigin === origin;
-      }
-    });
-
-    if (isAllowed) {
-      corsOptions = { origin: true }; // reflect (enable) the requested origin in the CORS response
-      console.log(`CORS allowed for origin: ${origin}`);
-    } else {
-      corsOptions = { origin: false }; // disable CORS for this request
-      console.log(`CORS blocked for origin: ${origin}`);
-    }
-
-    callback(null, corsOptions); // callback expects two parameters: error and options
-  },
+  origin: '*', // Allow all origins temporarily for troubleshooting
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -115,6 +68,15 @@ app.get('/api/debug', (req, res) => {
       hasMongoUri: !!process.env.MONGO_URI,
       hasJwtSecret: !!process.env.JWT_SECRET
     }
+  });
+});
+
+// Simple health check that doesn't need database access
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'ok',
+    message: 'Server is running',
+    timestamp: new Date().toISOString()
   });
 });
 
