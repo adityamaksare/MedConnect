@@ -59,14 +59,10 @@ app.use('/api/appointments', appointmentRoutes);
 
 // For production - Serve frontend build if in production
 if (process.env.NODE_ENV === 'production') {
-  // Set static folder
-  const __dirname = path.resolve();
-  app.use(express.static(path.join(__dirname, '../frontend/build')));
-
-  // Any route that is not api will be redirected to index.html
-  app.get('*', (req, res) =>
-    res.sendFile(path.resolve(__dirname, '../frontend/build', 'index.html'))
-  );
+  // Home route
+  app.get('/', (req, res) => {
+    res.json({ message: 'Doctor Appointment API is running' });
+  });
 } else {
   // Home route
   app.get('/', (req, res) => {
