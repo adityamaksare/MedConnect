@@ -33,8 +33,9 @@ app.use(cors({
     /^http:\/\/\d+\.\d+\.\d+\.\d+:3000$/,
     /^http:\/\/\d+\.\d+\.\d+\.\d+:3001$/,
     /^http:\/\/\d+\.\d+\.\d+\.\d+:5000$/,
-    // Add production URLs - update these with your actual deployed frontend URL
+    // Production URLs
     'https://doctor-appointment-frontend.onrender.com',
+    'https://medconnect-frontend.onrender.com',
     'https://medconnect.onrender.com'
   ],
   credentials: true,
