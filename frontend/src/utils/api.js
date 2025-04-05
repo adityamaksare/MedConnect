@@ -51,6 +51,9 @@ api.interceptors.request.use(
 // Request interceptor - add auth token to requests
 api.interceptors.request.use(
   (config) => {
+    // Log all requests to help debugging
+    console.log(`[API Request] ${config.method.toUpperCase()} ${config.baseURL}${config.url}`);
+
     debug('Request:', { url: config.url, method: config.method });
 
     const userInfoStr = localStorage.getItem('userInfo');
