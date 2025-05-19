@@ -171,5 +171,3 @@ All patient accounts have the same password:
 3. **Authentication Issues**: Check JWT implementation and user credentials.
 
 ## License
-
-MIT 
